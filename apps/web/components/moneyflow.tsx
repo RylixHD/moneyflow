@@ -595,22 +595,27 @@ export default function MoneyFlow() {
   function txTable() {
     return tx.items.length ? (
       <div className="table-scroll">
-        <table>
+        <table role="table" aria-label={t("İşlemler", "Transactions")}>
           <thead>
             <tr>
               <th>
-                <input
-                  aria-label="Tümünü seç"
-                  type="checkbox"
-                  checked={
-                    tx.items.length > 0 && selected.length === tx.items.length
-                  }
-                  onChange={(e) =>
-                    setSelected(
-                      e.target.checked ? tx.items.map((r: Row) => r.id) : [],
-                    )
-                  }
-                />
+                <label className="transaction-select">
+                  <input
+                    aria-label="Tümünü seç"
+                    type="checkbox"
+                    checked={
+                      tx.items.length > 0 && selected.length === tx.items.length
+                    }
+                    onChange={(e) =>
+                      setSelected(
+                        e.target.checked ? tx.items.map((r: Row) => r.id) : [],
+                      )
+                    }
+                  />
+                  <span className="mobile-only">
+                    {t("Tümünü seç", "Select all")}
+                  </span>
+                </label>
               </th>
               <th>{t("İşlem", "Transaction")}</th>
               <th>{t("Kategori", "Category")}</th>
@@ -620,22 +625,24 @@ export default function MoneyFlow() {
               <th />
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {tx.items.map((r: Row) => (
-              <tr key={r.id}>
+              <tr key={r.id} role="row">
                 <td>
-                  <input
-                    type="checkbox"
-                    aria-label={`${r.description} seç`}
-                    checked={selected.includes(r.id)}
-                    onChange={(e) =>
-                      setSelected(
-                        e.target.checked
-                          ? [...selected, r.id]
-                          : selected.filter((x) => x !== r.id),
-                      )
-                    }
-                  />
+                  <label className="transaction-select">
+                    <input
+                      type="checkbox"
+                      aria-label={`${r.description} seç`}
+                      checked={selected.includes(r.id)}
+                      onChange={(e) =>
+                        setSelected(
+                          e.target.checked
+                            ? [...selected, r.id]
+                            : selected.filter((x) => x !== r.id),
+                        )
+                      }
+                    />
+                  </label>
                 </td>
                 <td>
                   <span className={`tx-icon ${r.kind.toLowerCase()}`}>
@@ -658,7 +665,7 @@ export default function MoneyFlow() {
                       (r.kind === "TRANSFER" ? "Transfer" : "—")}
                   </span>
                 </td>
-                <td>{r.account.name}</td>
+                <td data-label={t("Hesap", "Account")}>{r.account.name}</td>
                 <td>
                   {new Date(r.date).toLocaleDateString(en ? "en-US" : "tr-TR")}
                 </td>
@@ -897,9 +904,22 @@ export default function MoneyFlow() {
       </div>
     );
   const title = nav.find((n) => n[0] === page);
+  const navigation = nav.map(([slug, tr, eng, Icon]) => (
+    <Link
+      className={page === slug ? "active" : ""}
+      href={`/${slug}`}
+      key={slug}
+      aria-current={page === slug ? "page" : undefined}
+      onClick={() => setSidebar(false)}
+    >
+      <Icon size={18} />
+      {en ? eng : tr}
+      {slug === "ai" && <span className="tiny-badge">AI</span>}
+    </Link>
+  ));
   return (
     <div className="app-shell">
-      <aside className={sidebar ? "sidebar open" : "sidebar"}>
+      <aside className="sidebar">
         <Logo />
         <div className="workspace">
           <div className="avatar">{user?.name?.[0] ?? "M"}</div>
@@ -909,20 +929,7 @@ export default function MoneyFlow() {
           </div>
         </div>
         <small className="nav-label">{t("ÇALIŞMA ALANI", "WORKSPACE")}</small>
-        <nav>
-          {nav.map(([slug, tr, eng, Icon]) => (
-            <Link
-              className={page === slug ? "active" : ""}
-              href={`/${slug}`}
-              key={slug}
-              onClick={() => setSidebar(false)}
-            >
-              <Icon size={18} />
-              {en ? eng : tr}
-              {slug === "ai" && <span className="tiny-badge">AI</span>}
-            </Link>
-          ))}
-        </nav>
+        <nav>{navigation}</nav>
         <div className="sidebar-bottom">
           <div className="secure">
             <ShieldCheck size={16} />
@@ -940,7 +947,40 @@ export default function MoneyFlow() {
           </button>
         </div>
       </aside>
-      {sidebar && <div className="scrim" onClick={() => setSidebar(false)} />}
+      <Dialog.Root open={sidebar} onOpenChange={setSidebar}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="mobile-navigation">
+            <div className="panel-head">
+              <Dialog.Title>{t("Menü", "Menu")}</Dialog.Title>
+              <Dialog.Close asChild>
+                <Button
+                  variant="ghost"
+                  aria-label={t("Menüyü kapat", "Close menu")}
+                >
+                  <X />
+                </Button>
+              </Dialog.Close>
+            </div>
+            <Dialog.Description className="muted">
+              {t("Finansal çalışma alanın", "Your financial workspace")}
+            </Dialog.Description>
+            <nav>{navigation}</nav>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await api("auth/logout", "POST");
+                setSidebar(false);
+                setUser(null);
+                router.push("/login");
+              }}
+            >
+              <LogOut size={18} />
+              {t("Çıkış yap", "Sign out")}
+            </Button>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       <div className="main-shell">
         <header className="topbar">
           <div className="row">
@@ -949,6 +989,8 @@ export default function MoneyFlow() {
               className="mobile-menu"
               onClick={() => setSidebar(!sidebar)}
               aria-label="Menü"
+              aria-haspopup="dialog"
+              aria-expanded={sidebar}
             >
               <Menu />
             </Button>
@@ -1729,7 +1771,7 @@ export default function MoneyFlow() {
                       "Choose a date range. Exports contain actual transactions in the selected currency.",
                     )}
                   </p>
-                  <div className="row">
+                  <div className="row report-exports">
                     {(["from", "to"] as const).map((k) => (
                       <label key={k}>
                         {k === "from"
@@ -2097,6 +2139,48 @@ export default function MoneyFlow() {
           </footer>
         </main>
       </div>
+      <nav
+        className="mobile-dock"
+        aria-label={t("Hızlı gezinme", "Quick navigation")}
+      >
+        <Link
+          href="/dashboard"
+          aria-current={page === "dashboard" ? "page" : undefined}
+        >
+          <LayoutDashboard size={21} />
+          <span>{t("Özet", "Overview")}</span>
+        </Link>
+        <Link
+          href="/transactions"
+          aria-current={page === "transactions" ? "page" : undefined}
+        >
+          <ArrowLeftRight size={21} />
+          <span>{t("İşlemler", "Activity")}</span>
+        </Link>
+        <button
+          className="dock-add"
+          aria-label={t("Yeni işlem", "New transaction")}
+          onClick={() => setModal({ type: "transactions" })}
+        >
+          <Plus size={26} />
+        </button>
+        <Link
+          href="/goals"
+          aria-current={page === "goals" ? "page" : undefined}
+        >
+          <Target size={21} />
+          <span>{t("Hedefler", "Goals")}</span>
+        </Link>
+        <button
+          aria-label={t("Tüm sayfalar", "All pages")}
+          aria-haspopup="dialog"
+          aria-expanded={sidebar}
+          onClick={() => setSidebar(true)}
+        >
+          <Menu size={21} />
+          <span>{t("Menü", "Menu")}</span>
+        </button>
+      </nav>
       <Dialog.Root
         open={!!modal}
         onOpenChange={(open) => !open && setModal(null)}
