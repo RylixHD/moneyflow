@@ -1,0 +1,28 @@
+name: Deploy to VDS
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: moneyflow-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure deployment credentials
+        env:
+          SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VDS_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: Deploy checked-out main branch on server
+        env:
+          VDS_HOST: ${{ secrets.VDS_HOST }}
+          VDS_USER: ${{ secrets.VDS_USER }}
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$VDS_USER@$VDS_HOST" 'cd /opt/moneyflow && git pull --ff-only origin main && docker compose build && docker compose up -d'

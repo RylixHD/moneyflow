@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  passwordHash String
+  verified Boolean @default(false)
+  createdAt DateTime @default(now())
+  sessions Session[]
+  tokens AuthToken[]
+  accounts Account[]
+  categories Category[]
+  transactions Transaction[]
+  budgets Budget[]
+  goals SavingsGoal[]
+  contributions SavingsContribution[]
+  subscriptions Subscription[]
+  notifications Notification[]
+  recurring RecurringTransaction[]
+  insights AIInsight[]
+  settings UserSettings?
+}
+model Session {
+  id String @id
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  expiresAt DateTime
+  @@index([userId])
+}
+model AuthToken {
+  id String @id
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  kind String
+  expiresAt DateTime
+  @@index([userId])
+}
+model Account {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  name String
+  kind String @default("BANK")
+  currency String @default("TRY")
+  opening Decimal @default(0) @db.Decimal(18,2)
+  transactions Transaction[] @relation("Source")
+  received Transaction[] @relation("Destination")
+  recurring RecurringTransaction[]
+  @@unique([id,userId])
+  @@index([userId])
+}
+model Category {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  name String
+  icon String @default("circle")
+  transactions Transaction[]
+  budgets Budget[]
+  @@unique([userId,name])
+  @@unique([id,userId])
+}
+model Transaction {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  accountId String
+  account Account @relation("Source",fields:[accountId,userId],references:[id,userId],onDelete:NoAction)
+  destinationId String?
+  destination Account? @relation("Destination",fields:[destinationId],references:[id],onDelete:Restrict)
+  categoryId String?
+  category Category? @relation(fields:[categoryId],references:[id],onDelete:SetNull)
+  kind String
+  amount Decimal @db.Decimal(18,2)
+  receivedAmount Decimal? @db.Decimal(18,2)
+  fxRate Decimal? @db.Decimal(20,8)
+  fxSource String?
+  fxDate DateTime?
+  description String
+  tags String[] @default([])
+  date DateTime
+  createdAt DateTime @default(now())
+  recurringKey String? @unique
+  @@index([userId,date])
+  @@index([accountId])
+  @@index([destinationId])
+  @@index([categoryId])
+}
+model Budget {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  categoryId String
+  category Category @relation(fields:[categoryId,userId],references:[id,userId],onDelete:NoAction)
+  amount Decimal @db.Decimal(18,2)
+  currency String @default("TRY")
+  month String
+  rollover Boolean @default(true)
+  @@unique([userId,categoryId,currency,month])
+}
+model SavingsGoal {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  name String
+  target Decimal @db.Decimal(18,2)
+  currency String @default("TRY")
+  deadline DateTime
+  contributions SavingsContribution[]
+  @@unique([id,userId])
+  @@index([userId])
+}
+model SavingsContribution {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  goalId String
+  goal SavingsGoal @relation(fields:[goalId,userId],references:[id,userId],onDelete:NoAction)
+  amount Decimal @db.Decimal(18,2)
+  date DateTime @default(now())
+  @@index([userId,goalId])
+}
+model Subscription {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  name String
+  amount Decimal @db.Decimal(18,2)
+  currency String @default("TRY")
+  period String @default("MONTHLY")
+  nextPayment DateTime
+  active Boolean @default(true)
+  @@index([userId,nextPayment])
+}
+model RecurringTransaction {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  accountId String
+  account Account @relation(fields:[accountId,userId],references:[id,userId],onDelete:NoAction)
+  description String
+  amount Decimal @db.Decimal(18,2)
+  kind String
+  period String @default("MONTHLY")
+  nextDate DateTime
+  active Boolean @default(true)
+  @@index([userId,nextDate])
+}
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  key String @unique
+  message String
+  read Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([userId,createdAt])
+}
+model AIInsight {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  question String
+  answer String
+  createdAt DateTime @default(now())
+  @@index([userId,createdAt])
+}
+model UserSettings {
+  userId String @id
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  theme String @default("dark")
+  locale String @default("tr")
+  currency String @default("TRY")
+  notifications Boolean @default(true)
+  aiConsent Boolean @default(false)
+  avatarUrl String @default("")
+}

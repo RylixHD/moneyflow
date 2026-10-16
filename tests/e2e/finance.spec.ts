@@ -1,0 +1,31 @@
+import { test, expect } from '@playwright/test';
+test('login, create and edit expense, search and export',async({page})=>{
+  await page.goto('/login');
+  await page.getByLabel('E-posta',{exact:true}).fill('demo@moneyflow.example');
+  await page.getByLabel('Şifre',{exact:false}).fill(process.env.DEMO_PASSWORD!);
+  await page.getByRole('button',{name:'Giriş yap',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Merhaba, Deniz 👋'})).toBeVisible();
+  await expect(page.getByText('Toplam bakiye',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Yeni kayıt',exact:true}).click();
+  const description=`E2E market ${Date.now()}`;
+  await page.getByLabel('Açıklama',{exact:true}).fill(description);
+  await page.getByLabel('Tutar',{exact:true}).fill('12.34');
+  await page.getByRole('combobox',{name:'Kategori',exact:true}).selectOption({label:'Market'});
+  await page.getByRole('button',{name:'Kaydet',exact:true}).click();
+  await expect(page.getByText(description,{exact:true})).toBeVisible();
+  await page.getByRole('row').filter({hasText:description}).getByRole('button',{name:'Düzenle'}).click();
+  await page.getByLabel('Tutar',{exact:true}).fill('15.67');
+  await page.getByRole('button',{name:'Kaydet',exact:true}).click();
+  await expect(page.getByRole('row').filter({hasText:description})).toContainText('15,67');
+  await page.getByRole('link',{name:'İşlemler',exact:true}).click();
+  await page.getByPlaceholder('İşlem ara…').fill(description);
+  await expect(page.getByRole('row').filter({hasText:description})).toBeVisible();
+  const download=page.waitForEvent('download');await page.getByRole('link',{name:'CSV',exact:true}).click();
+  expect((await download).suggestedFilename()).toBe('moneyflow.csv');
+});
+test('mobile landing and protected route redirect',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  await expect(page.getByRole('heading',{name:'Bugünü yönet. Geleceğine yer aç.'})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  await page.goto('/dashboard');await expect(page).toHaveURL(/\/login$/);
+});

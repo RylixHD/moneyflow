@@ -1,0 +1,50 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: moneyflow
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: moneyflow_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U moneyflow -d moneyflow_test"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      DATABASE_URL: postgresql://moneyflow:test-only-password@localhost:5432/moneyflow_test
+      APP_ORIGIN: http://localhost:3000
+      API_PORT: 4000
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run db:migrate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:seed
+        env:
+          DEMO_PASSWORD: ci-demo-password-2026
+      - run: npx playwright test
+        env:
+          DEMO_PASSWORD: ci-demo-password-2026
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: test-results/
