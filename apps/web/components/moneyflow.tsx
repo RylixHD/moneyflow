@@ -151,6 +151,10 @@ export default function MoneyFlow() {
     "verify",
     "reset",
   ].includes(page);
+  useEffect(() => {
+    setError("");
+    setRegisteredEmail("");
+  }, [page]);
   const notify = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(""), 5000);
@@ -883,6 +887,8 @@ export default function MoneyFlow() {
                   Şifre
                   <input
                     name="password"
+                  aria-label="Şifre"
+                  aria-describedby="password-hint"
                     type="password"
                     required
                     minLength={12}
@@ -891,7 +897,7 @@ export default function MoneyFlow() {
                       page === "login" ? "current-password" : "new-password"
                     }
                   />
-                  <small>En az 12 karakter.</small>
+                  <small id="password-hint">En az 12 karakter.</small>
                 </label>
               )}
               {page === "register" && (
