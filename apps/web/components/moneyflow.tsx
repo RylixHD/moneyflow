@@ -118,6 +118,7 @@ export default function MoneyFlow() {
     [month, setMonth] = useState(today().slice(0, 7)),
     [toast, setToast] = useState(""),
     [error, setError] = useState(""),
+    [registeredEmail, setRegisteredEmail] = useState(""),
     [loading, setLoading] = useState(true),
     [sidebar, setSidebar] = useState(false),
     [modal, setModal] = useState<Row | null>(null),
@@ -241,8 +242,16 @@ export default function MoneyFlow() {
         await api("auth/login", "POST", form);
         router.push("/dashboard");
       } else if (page === "register") {
-        const r = await api("auth/register", "POST", form);
-        setError(r.message);
+        if (form.password !== form.confirmPassword) {
+          setError("Şifreler eşleşmiyor. Lütfen tekrar kontrol et.");
+          return;
+        }
+        await api("auth/register", "POST", {
+          name: form.name,
+          email: form.email,
+          password: form.password,
+        });
+        setRegisteredEmail(String(form.email));
       } else if (page === "forgot") {
         const r = await api("auth/request-token", "POST", {
           email: form.email,
@@ -815,7 +824,9 @@ export default function MoneyFlow() {
               (
                 {
                   login: "Tekrar merhaba.",
-                  register: "Yeni bir başlangıç.",
+                  register: registeredEmail
+                    ? "E-postanı kontrol et."
+                    : "Hesabını oluştur.",
                   forgot: "Hesabına geri dön.",
                   verify: "E-postanı doğrula.",
                   reset: "Yeni şifreni belirle.",
@@ -823,79 +834,132 @@ export default function MoneyFlow() {
               )[page]
             }
           </h1>
-          <p className="muted">Finansal hayatını birlikte düzene koyalım.</p>
-          <form onSubmit={authSubmit}>
-            {page === "register" && (
-              <label>
-                Ad soyad
-                <input
-                  name="name"
-                  required
-                  maxLength={100}
-                  autoComplete="name"
-                />
-              </label>
-            )}
-            {["register", "login", "forgot"].includes(page) && (
-              <label>
-                E-posta
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                />
-              </label>
-            )}
-            {["register", "login", "reset"].includes(page) && (
-              <label>
-                Şifre
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  minLength={12}
-                  maxLength={128}
-                  autoComplete={
-                    page === "login" ? "current-password" : "new-password"
-                  }
-                />
-                <small>En az 12 karakter.</small>
-              </label>
-            )}
-            {page === "forgot" && (
-              <label>
-                İşlem
-                <select name="kind">
-                  <option value="reset">Şifre sıfırlama</option>
-                  <option value="verify">
-                    Doğrulama e-postasını yeniden gönder
-                  </option>
-                </select>
-              </label>
-            )}
-            <Button disabled={busy}>
-              {busy
-                ? "İşleniyor…"
-                : page === "login"
-                  ? "Giriş yap"
-                  : page === "register"
-                    ? "Hesap oluştur"
-                    : page === "verify"
-                      ? "E-postamı doğrula"
-                      : "Gönder"}
-              <ArrowRight size={16} />
-            </Button>
-          </form>
+          <p className="muted">
+            {page === "register"
+              ? "Gelirlerini, harcamalarını ve birikim hedeflerini tek yerden yönet."
+              : "Finansal hayatını birlikte düzene koyalım."}
+          </p>
+          {page === "register" && registeredEmail ? (
+            <div className="registration-success" role="status">
+              <p>
+                <strong>{registeredEmail}</strong> adresine doğrulama bağlantısı
+                gönderdik.
+              </p>
+              <p>
+                E-postadaki bağlantıyla hesabını doğrula, ardından giriş yap.
+                Mesajı bulamazsan spam klasörünü kontrol et.
+              </p>
+              <Link className="button primary" href="/login">
+                Giriş ekranına dön
+              </Link>
+              <Link href="/forgot">Doğrulama e-postasını yeniden gönder</Link>
+            </div>
+          ) : (
+            <form onSubmit={authSubmit}>
+              {page === "register" && (
+                <label>
+                  Ad soyad
+                  <input
+                    name="name"
+                    required
+                    maxLength={100}
+                    autoComplete="name"
+                  />
+                </label>
+              )}
+              {["register", "login", "forgot"].includes(page) && (
+                <label>
+                  E-posta
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                  />
+                </label>
+              )}
+              {["register", "login", "reset"].includes(page) && (
+                <label>
+                  Şifre
+                  <input
+                    name="password"
+                    type="password"
+                    required
+                    minLength={12}
+                    maxLength={128}
+                    autoComplete={
+                      page === "login" ? "current-password" : "new-password"
+                    }
+                  />
+                  <small>En az 12 karakter.</small>
+                </label>
+              )}
+              {page === "register" && (
+                <label>
+                  Şifre tekrarı
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    minLength={12}
+                    maxLength={128}
+                    autoComplete="new-password"
+                  />
+                </label>
+              )}
+              {page === "register" && (
+                <p className="auth-help">
+                  Hesabını etkinleştirmek için e-posta adresine bir doğrulama
+                  bağlantısı göndereceğiz.
+                </p>
+              )}
+              {page === "forgot" && (
+                <label>
+                  İşlem
+                  <select name="kind">
+                    <option value="reset">Şifre sıfırlama</option>
+                    <option value="verify">
+                      Doğrulama e-postasını yeniden gönder
+                    </option>
+                  </select>
+                </label>
+              )}
+              <Button disabled={busy}>
+                {busy
+                  ? "İşleniyor…"
+                  : page === "login"
+                    ? "Giriş yap"
+                    : page === "register"
+                      ? "Hesap oluştur"
+                      : page === "verify"
+                        ? "E-postamı doğrula"
+                        : "Gönder"}
+                <ArrowRight size={16} />
+              </Button>
+            </form>
+          )}
           {error && (
             <p role="status" className="notice">
               {error}
             </p>
           )}
+          {page === "login" && (
+            <section className="auth-create-account" aria-label="Yeni hesap">
+              <h2>MoneyFlow’a yeni misin?</h2>
+              <p>Kendi bütçeni oluştur, finansal hedeflerine ilk adımı at.</p>
+              <Link className="button outline" href="/register">
+                Hesap oluştur
+              </Link>
+            </section>
+          )}
           <div className="auth-links">
-            <Link href="/login">Giriş yap</Link>
-            <Link href="/register">Kayıt ol</Link>
-            <Link href="/forgot">Şifremi unuttum</Link>
+            {page !== "login" && (
+              <Link href="/login">Zaten hesabın var mı? Giriş yap</Link>
+            )}
+            {page !== "register" && page !== "login" && (
+              <Link href="/register">Hesap oluştur</Link>
+            )}
+            {page !== "register" && <Link href="/forgot">Şifremi unuttum</Link>}
           </div>
         </section>
         <small className="muted">

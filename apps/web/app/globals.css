@@ -1227,6 +1227,36 @@ tr:last-child td {
 .auth-card form {
   margin-top: 25px;
 }
+.auth-create-account {
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.auth-create-account h2 {
+  font-size: 17px;
+}
+.auth-create-account p,
+.auth-help,
+.registration-success p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.auth-create-account .button,
+.auth-card form > .button {
+  width: 100%;
+}
+.registration-success {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.registration-success > a:last-child {
+  font-size: 13px;
+  text-align: center;
+}
 .auth-links {
   display: flex;
   gap: 18px;
